@@ -1,7 +1,17 @@
-resource "proxmox_virtual_environment_vm" "test" {
-  name      = "vm-test"
+locals {
+  nodes = {
+    "k8s-cp-01"     = { vm_id = 110, ip = "192.168.1.70", cores = 2, memory = 4096 }
+    "k8s-worker-01" = { vm_id = 120, ip = "192.168.1.71", cores = 2, memory = 6144 }
+    "k8s-worker-02" = { vm_id = 121, ip = "192.168.1.72", cores = 2, memory = 6144 }
+  }
+}
+
+resource "proxmox_virtual_environment_vm" "k8s" {
+  for_each = local.nodes
+
+  name      = each.key
   node_name = "pve01"
-  vm_id     = 101
+  vm_id     = each.value.vm_id
 
   clone {
     vm_id = 9000
@@ -9,20 +19,24 @@ resource "proxmox_virtual_environment_vm" "test" {
   }
 
   cpu {
-    cores = 2
+    cores = each.value.cores
     type  = "host"
   }
 
   memory {
-    dedicated = 2048
+    dedicated = each.value.memory
   }
 
   initialization {
     ip_config {
       ipv4 {
-        address = "192.168.1.61/24"
+        address = "${each.value.ip}/24"
         gateway = "192.168.1.1"
       }
+    }
+
+    dns {
+      servers = ["9.9.9.9"]
     }
 
     user_account {
