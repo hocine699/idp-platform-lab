@@ -13,8 +13,10 @@ spec:
       labels:
         app: demo
     spec:
+      imagePullSecrets:
+        - name: harbor-pull
       containers:
         - name: nginx
-          image: nginx:alpine
+          image: registry.devops-hme.cloud/library/nginx:alpine
           ports:
             - containerPort: 80
