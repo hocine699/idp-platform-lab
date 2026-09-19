@@ -1,0 +1,190 @@
+# Déploiement de Backstage dans le cluster.
+# Six objets, appliqués dans l'ordre.
+
+---
+# 1. Namespace dédié
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backstage
+
+---
+# 2. Identifiants Harbor, fournis par Vault via External Secrets.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: harbor-pull
+  namespace: backstage
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: harbor-pull
+    creationPolicy: Owner
+    template:
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: |
+          {
+            "auths": {
+              "registry.devops-hme.cloud": {
+                "username": "{{ .username }}",
+                "password": "{{ .password }}",
+                "auth": "{{ printf "%s:%s" .username .password | b64enc }}"
+              }
+            }
+          }
+  data:
+    - secretKey: username
+      remoteRef:
+        key: harbor/robot
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: harbor/robot
+        property: password
+
+---
+# 3. Configuration de production, sortie de l'image.
+#    Montée par-dessus le fichier d'origine : changer la configuration
+#    ne demande plus de reconstruire l'image, seulement de redémarrer le pod.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-config
+  namespace: backstage
+data:
+  app-config.production.yaml: |
+    app:
+      baseUrl: https://backstage.devops-hme.cloud
+
+    backend:
+      baseUrl: https://backstage.devops-hme.cloud
+      listen:
+        port: 7007
+        host: 0.0.0.0
+      cors:
+        origin: https://backstage.devops-hme.cloud
+      # PostgreSQL sur le NAS. Les valeurs ${...} sont lues dans les
+      # variables d'environnement du pod, fournies par le Secret
+      # backstage-postgres (Vault -> ESO).
+      database:
+        client: pg
+        connection:
+          host: ${POSTGRES_HOST}
+          port: ${POSTGRES_PORT}
+          user: ${POSTGRES_USER}
+          password: ${POSTGRES_PASSWORD}
+
+    catalog:
+      locations:
+        - type: file
+          target: ./examples/entities.yaml
+
+        - type: file
+          target: ./examples/template/template.yaml
+          rules:
+            - allow: [Template]
+
+        - type: file
+          target: ./examples/org.yaml
+          rules:
+            - allow: [User, Group]
+
+---
+# 4. Le déploiement
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+    spec:
+      imagePullSecrets:
+        - name: harbor-pull
+      containers:
+        - name: backstage
+          image: registry.devops-hme.cloud/library/backstage:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 7007
+          # Les quatre clés du Secret deviennent des variables d'environnement.
+          envFrom:
+            - secretRef:
+                name: backstage-postgres
+          # Remplace le fichier cuit dans l'image par celui de la ConfigMap.
+          # subPath : on monte un seul fichier, sans écraser le reste de /app.
+          volumeMounts:
+            - name: config
+              mountPath: /app/app-config.production.yaml
+              subPath: app-config.production.yaml
+              readOnly: true
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /.backstage/health/v1/readiness
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /.backstage/health/v1/liveness
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: config
+          configMap:
+            name: backstage-config
+
+---
+# 5. Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  selector:
+    app: backstage
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+# 6. Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: backstage.devops-hme.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backstage
+                port:
+                  name: http
