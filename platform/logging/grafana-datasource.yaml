@@ -1,0 +1,19 @@
+# Source de données Loki pour Grafana.
+# Le label "grafana_datasource" est repéré automatiquement par Grafana
+# (kube-prometheus-stack) : pas besoin de la créer à la main.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-datasource
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  loki.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki.monitoring.svc.cluster.local:3100

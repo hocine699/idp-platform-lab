@@ -1,0 +1,63 @@
+# Réglages Helm de Loki (chart grafana-community/loki).
+# Mode "Monolithic" : un seul pod, logs stockés sur le disque du nœud.
+deploymentMode: Monolithic
+
+loki:
+  auth_enabled: false          # un seul "locataire" : pas d'authentification interne
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    retention_period: 72h      # 3 jours de logs
+    allow_structured_metadata: true
+    volume_enabled: true
+  compactor:
+    retention_enabled: true    # sans ça, la rétention n'efface rien
+    delete_request_store: filesystem
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 768Mi
+
+# Tout ce qui sert au mode "distribué" : désactivé.
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+
+# Caches memcached (plusieurs Go de RAM par défaut) : inutiles en lab.
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+# Pas de proxy nginx devant Loki, pas de pod de test permanent.
+gateway:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false
+minio:
+  enabled: false

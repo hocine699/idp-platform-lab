@@ -1,0 +1,54 @@
+# Réglages Helm d'Alloy (chart grafana/alloy) : collecte des logs des pods.
+# Un seul pod qui lit les logs via l'API Kubernetes (pas de DaemonSet :
+# plus simple et plus léger pour un lab de 3 nœuds).
+controller:
+  type: deployment
+  replicas: 1
+
+alloy:
+  resources:
+    requests:
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+  configMap:
+    content: |-
+      // 1. Trouver tous les pods du cluster.
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // 2. Leur donner des étiquettes lisibles dans Grafana.
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+      }
+
+      // 3. Lire les logs de ces pods.
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // 4. Les envoyer à Loki.
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }
