@@ -14,10 +14,24 @@ metadata:
 spec:
   gatewayClassName: cilium
   listeners:
+    # HTTP : utilisé par le tunnel Cloudflare (le HTTPS est fait chez Cloudflare).
     - name: http
       protocol: HTTP
       port: 80
-      # Les HTTPRoute de n'importe quel namespace peuvent s'y rattacher.
+      allowedRoutes:
+        namespaces:
+          from: All
+
+    # HTTPS : utilisé depuis la maison (nœuds -> Harbor, via AdGuard).
+    # Certificat Let's Encrypt *.devops-hme.cloud géré par cert-manager.
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.devops-hme.cloud"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: wildcard-devops-hme-cloud-tls
       allowedRoutes:
         namespaces:
           from: All

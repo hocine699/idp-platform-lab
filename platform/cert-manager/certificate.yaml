@@ -1,0 +1,15 @@
+# Certificat unique pour tous les sous-domaines de devops-hme.cloud.
+# Rangé dans le namespace du Gateway, qui l'utilise pour le HTTPS.
+# Renouvelé automatiquement par cert-manager avant expiration.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-devops-hme-cloud
+  namespace: gateway
+spec:
+  secretName: wildcard-devops-hme-cloud-tls
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.devops-hme.cloud"

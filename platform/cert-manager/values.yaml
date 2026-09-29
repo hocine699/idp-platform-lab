@@ -1,0 +1,10 @@
+# Réglages Helm de cert-manager.
+crds:
+  enabled: true
+
+# Pour vérifier les enregistrements DNS de validation, cert-manager
+# interroge directement des DNS publics, et pas AdGuard : AdGuard
+# réécrit certains noms de devops-hme.cloud et garde des réponses en cache.
+extraArgs:
+  - --dns01-recursive-nameservers-only
+  - --dns01-recursive-nameservers=1.1.1.1:53,9.9.9.9:53
