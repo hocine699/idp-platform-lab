@@ -1,0 +1,26 @@
+# Réserve d'adresses du réseau de la maison, pour les Services LoadBalancer
+# et les Gateway. Hors de la plage DHCP de la box (.100 -> .199).
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: lan
+spec:
+  blocks:
+    - start: "192.168.1.200"
+      stop: "192.168.1.219"
+
+---
+# Quels nœuds répondent sur le réseau pour ces adresses (ARP).
+# Uniquement les workers : le control plane ne reçoit pas de trafic applicatif.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: lan
+spec:
+  loadBalancerIPs: true
+  interfaces:
+    - ^eth[0-9]+
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
