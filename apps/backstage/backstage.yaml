@@ -169,22 +169,19 @@ spec:
       targetPort: http
 
 ---
-# 6. Ingress
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+# 6. Route backstage.devops-hme.cloud (Gateway API, remplace l'Ingress)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: backstage
   namespace: backstage
 spec:
-  ingressClassName: nginx
+  parentRefs:
+    - name: main
+      namespace: gateway
+  hostnames:
+    - backstage.devops-hme.cloud
   rules:
-    - host: backstage.devops-hme.cloud
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: backstage
-                port:
-                  name: http
+    - backendRefs:
+        - name: backstage
+          port: 80
