@@ -36,7 +36,7 @@ resource "proxmox_virtual_environment_vm" "k8s" {
     }
 
     dns {
-      servers = ["9.9.9.9"]
+      servers = ["192.168.1.253", "9.9.9.9"]
     }
 
     user_account {

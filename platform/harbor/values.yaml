@@ -1,0 +1,16 @@
+# Réglages Helm de Harbor (chart harbor/harbor).
+# Exposé en ClusterIP : c'est le Gateway (HTTPRoute) qui le publie.
+expose:
+  type: clusterIP
+  tls:
+    enabled: false
+
+# Adresse publique : sert à construire les liens et l'URL d'authentification Docker.
+externalURL: https://registry.devops-hme.cloud
+
+# Mot de passe admin lu dans le secret "harbor-admin" (créé par ESO depuis Vault).
+existingSecretAdminPassword: harbor-admin
+existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+
+trivy:
+  enabled: false
