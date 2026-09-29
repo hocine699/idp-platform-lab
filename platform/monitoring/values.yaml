@@ -1,0 +1,68 @@
+# Réglages Helm de kube-prometheus-stack (Prometheus + Grafana + Alertmanager).
+# Version "lab" : rétention courte, limites mémoire strictes.
+
+# Composants que kubeadm n'expose pas (ils n'écoutent que sur 127.0.0.1)
+# et kube-proxy, remplacé par Cilium : on ne les surveille pas,
+# sinon Prometheus afficherait des cibles en erreur en permanence.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 5d
+    retentionSize: 4GB
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 100m
+      limits:
+        memory: 1536Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+    # Surveiller TOUS les ServiceMonitor/PodMonitor/règles du cluster,
+    # pas seulement ceux installés par ce chart.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+
+grafana:
+  # Identifiants admin lus dans le secret "grafana-admin" (ESO depuis Vault).
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  resources:
+    requests:
+      memory: 128Mi
+    limits:
+      memory: 384Mi
+
+kube-state-metrics:
+  resources:
+    limits:
+      memory: 128Mi
+
+prometheus-node-exporter:
+  resources:
+    limits:
+      memory: 64Mi
