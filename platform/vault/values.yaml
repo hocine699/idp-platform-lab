@@ -1,0 +1,15 @@
+# Réglages Helm de Vault (chart hashicorp/vault).
+# Un seul serveur, données sur le disque du nœud (local-path).
+server:
+  standalone:
+    enabled: true
+  dataStorage:
+    size: 2Gi
+    storageClass: local-path
+
+# L'injecteur n'est pas utilisé : les secrets arrivent par ESO.
+injector:
+  enabled: false
+
+ui:
+  enabled: true
