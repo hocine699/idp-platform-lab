@@ -1,0 +1,8 @@
+# Réglages Helm de Kargo. Les secrets (hash du mot de passe admin,
+# clé de signature) viennent de Vault : voir scripts/install-kargo.sh.
+api:
+  host: kargo.devops-hme.cloud
+  # Le HTTPS est fait en amont (Cloudflare ou Gateway) : Kargo parle en HTTP.
+  tls:
+    enabled: false
+    terminatedUpstream: true
