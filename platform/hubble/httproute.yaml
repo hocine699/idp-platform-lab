@@ -1,0 +1,17 @@
+# hubble.devops-hme.cloud -> Hubble UI (carte du trafic réseau entre les pods).
+# Hubble UI n'a AUCUNE authentification : Cloudflare Access est obligatoire devant.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+spec:
+  parentRefs:
+    - name: main
+      namespace: gateway
+  hostnames:
+    - hubble.devops-hme.cloud
+  rules:
+    - backendRefs:
+        - name: hubble-ui
+          port: 80
