@@ -1,0 +1,29 @@
+# Réglages Helm de blackbox exporter : le "testeur" qui pose des questions
+# à d'autres services et note s'ils répondent correctement.
+fullnameOverride: blackbox-exporter
+
+resources:
+  requests:
+    memory: 32Mi
+  limits:
+    memory: 64Mi
+
+config:
+  modules:
+    # Test 1 : demander à un DNS où est registry.devops-hme.cloud.
+    # Réussi seulement si la réponse contient 192.168.1.200 (la réécriture AdGuard).
+    dns_registry:
+      prober: dns
+      timeout: 5s
+      dns:
+        query_name: registry.devops-hme.cloud
+        query_type: A
+        transport_protocol: udp
+        preferred_ip_protocol: ip4
+        validate_answer_rrs:
+          fail_if_none_matches_regexp:
+            - '.*192\.168\.1\.200$'
+    # Test 2 : ouvrir une connexion TCP (le service écoute-t-il ?).
+    tcp_connect:
+      prober: tcp
+      timeout: 5s

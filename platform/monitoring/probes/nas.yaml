@@ -1,0 +1,42 @@
+# Tests des services du NAS, lancés depuis le cluster toutes les 30 secondes.
+
+# AdGuard répond-il, et donne-t-il bien 192.168.1.200 pour registry ?
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: nas-adguard-dns
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  module: dns_registry
+  targets:
+    staticConfig:
+      static:
+        - 192.168.1.253
+      labels:
+        node: ds224
+        service: adguard
+
+---
+# PostgreSQL (base de Backstage) accepte-t-il les connexions ?
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: nas-postgresql
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  module: tcp_connect
+  targets:
+    staticConfig:
+      static:
+        - 192.168.1.253:5433
+      labels:
+        node: ds224
+        service: postgresql
