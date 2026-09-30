@@ -1,0 +1,15 @@
+# Collecte des métriques matérielles de l'hôte Proxmox (node-exporter).
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: proxmox-host
+  namespace: monitoring
+  labels:
+    release: monitoring        # permet à Prometheus de trouver cette config
+spec:
+  staticConfigs:
+    - targets:
+        - "192.168.1.50:9100"            # (1) IP du Proxmox  (2) port de node-exporter
+      labels:
+        node: pve01
+        role: hyperviseur
