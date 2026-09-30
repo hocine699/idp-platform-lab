@@ -1,0 +1,38 @@
+# Scénario de panne n°1 : une appli qui plante au démarrage (CrashLoopBackOff).
+# Cause cachée : la variable DATABASE_URL n'est pas fournie.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: boutique
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: commandes
+  namespace: boutique
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: commandes
+  template:
+    metadata:
+      labels:
+        app: commandes
+    spec:
+      containers:
+        - name: commandes
+          image: registry.devops-hme.cloud/library/nginx:alpine
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Démarrage du service commandes..."
+              if [ -z "$DATABASE_URL" ]; then
+                echo "FATAL: DATABASE_URL non définie, impossible de joindre la base"
+                exit 1
+              fi
+              exec nginx -g "daemon off;"
+          resources:
+            limits:
+              memory: 64Mi
