@@ -1,0 +1,29 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: backstage-egress
+  namespace: backstage              # ← toi
+spec:
+  endpointSelector:
+    matchLabels:
+      app: backstage                # ← toi
+  egress:
+    # 1. Vers sa base PostgreSQL sur le NAS
+    - toCIDR:
+        - 192.168.1.253/32          # ← toi
+      toPorts:
+        - ports:
+            - port: "5433"          # ← toi (entre guillemets)
+              protocol: TCP
+    # 2. Vers le DNS du cluster (CoreDNS)
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
