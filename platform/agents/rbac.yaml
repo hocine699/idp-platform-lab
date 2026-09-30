@@ -1,0 +1,23 @@
+# Identité de l'agent SRE : un "compte de service" Kubernetes.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sre-agent
+  namespace: agents
+
+---
+# Ses droits : le rôle "view", fourni par Kubernetes.
+# "view" = lire presque tout (pods, logs, événements, déploiements…),
+# SAUF les secrets, et ne rien créer, modifier ou supprimer.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sre-agent-view
+subjects:
+  - kind: ServiceAccount
+    name: sre-agent
+    namespace: agents
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: rbac.authorization.k8s.io
