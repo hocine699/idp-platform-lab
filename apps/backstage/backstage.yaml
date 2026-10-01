@@ -84,13 +84,22 @@ data:
           token: ${GITHUB_TOKEN}
 
     catalog:
+      providers:
+        github:
+          hocine699:
+            organization: 'hocine699'
+            catalogPath: '/catalog-info.yaml'
+            filters:
+              branch: 'main'
+              repository: '.*'
+            schedule:
+              frequency: { minutes: 30 }
+              timeout: { minutes: 3 }
       locations:
         - type: url
           target: https://github.com/hocine699/idp-platform-lab/blob/main/catalog/org.yaml
           rules:
             - allow: [User, Group]
-        - type: url
-          target: https://github.com/hocine699/signal/blob/main/catalog-info.yaml
         - type: file
           target: ./examples/entities.yaml
 
@@ -125,7 +134,7 @@ spec:
         - name: harbor-pull
       containers:
         - name: backstage
-          image: registry.devops-hme.cloud/library/backstage:0.1.0
+          image: registry.devops-hme.cloud/library/backstage:0.2.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
