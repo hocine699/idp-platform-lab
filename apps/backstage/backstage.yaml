@@ -78,8 +78,19 @@ data:
           user: ${POSTGRES_USER}
           password: ${POSTGRES_PASSWORD}
 
+    integrations:
+      github:
+        - host: github.com
+          token: ${GITHUB_TOKEN}
+
     catalog:
       locations:
+        - type: url
+          target: https://github.com/hocine699/idp-platform-lab/blob/main/catalog/org.yaml
+          rules:
+            - allow: [User, Group]
+        - type: url
+          target: https://github.com/hocine699/signal/blob/main/catalog-info.yaml
         - type: file
           target: ./examples/entities.yaml
 
@@ -123,6 +134,8 @@ spec:
           envFrom:
             - secretRef:
                 name: backstage-postgres
+            - secretRef:
+                name: backstage-github
           # Remplace le fichier cuit dans l'image par celui de la ConfigMap.
           # subPath : on monte un seul fichier, sans écraser le reste de /app.
           volumeMounts:

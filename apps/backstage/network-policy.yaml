@@ -2,20 +2,20 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: backstage-egress
-  namespace: backstage              # ← toi
+  namespace: backstage
 spec:
   endpointSelector:
     matchLabels:
-      app: backstage                # ← toi
+      app: backstage
   egress:
-    # 1. Vers sa base PostgreSQL sur le NAS
+    # 1. La base de données sur le NAS
     - toCIDR:
-        - 192.168.1.253/32          # ← toi
+        - 192.168.1.253/32
       toPorts:
         - ports:
-            - port: "5433"          # ← toi (entre guillemets)
+            - port: "5433"
               protocol: TCP
-    # 2. Vers le DNS du cluster (CoreDNS)
+    # 2. Le DNS du cluster
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: kube-system
@@ -27,3 +27,12 @@ spec:
           rules:
             dns:
               - matchPattern: "*"
+    # 3. NOUVEAU : GitHub, pour lire les cartes d'identité
+    - toFQDNs:
+        - matchName: github.com
+        - matchName: api.github.com
+        - matchName: raw.githubusercontent.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
