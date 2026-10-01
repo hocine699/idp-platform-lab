@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: hocine
+spec:
+  profile:
+    displayName: Hocine
+  memberOf: []
