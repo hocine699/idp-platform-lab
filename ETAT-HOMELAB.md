@@ -56,6 +56,45 @@ Le NAS doit rester allumé : sans lui, plus de DNS, plus de base de données, et
 - Backstage : catalogue, découverte GitHub, module MCP installé.
 - Harbor : registry.devops-hme.cloud. Tempo + Alloy : traces OpenTelemetry. Vault + External Secrets : tous les secrets.
 
+## Monitoring de bout en bout (objectif)
+Tout surveiller, de la couche matérielle jusqu'à l'application, dans un seul Grafana. C'est aussi ce qui sert d'yeux aux agents du SRE Autonome.
+
+| Couche | Quoi surveiller | État |
+|---|---|---|
+| Matériel | Disques (SMART, usure NVMe), températures, alimentation des mini-PC | À faire : node-exporter + smartctl-exporter sur pve01/pve02 |
+| NAS | Disques, volumes, températures, conteneurs (AdGuard, PostgreSQL, qnetd) | À faire : SNMP Synology ou exporter |
+| Hyperviseur | Proxmox : nœuds, VM, stockage, quorum | Commencé : scrape de l'API Proxmox (pve-exporter) |
+| Réseau | Cilium, Hubble, Gateway, DNS AdGuard | Commencé : métriques Cilium |
+| Kubernetes | Nœuds, pods, ressources | En place : kube-prometheus-stack, node-exporter |
+| Plateforme | ArgoCD, Kargo, Harbor, Vault (sealed ?), External Secrets, cert-manager (expiration) | À vérifier |
+| Données | PostgreSQL du NAS | À faire : postgres-exporter |
+| Applications | Signal, Radar, Backstage : traces, logs, métriques métier, coût IA | Commencé : traces Tempo (Signal), logs Loki |
+| Vue client | Sites publics joignables (signal.devops-hme.cloud…) | À faire : sondes blackbox |
+Puis : tableaux de bord par couche, et alertes Alertmanager qui alimentent les agents.
+
+## Tout en pipeline (objectif)
+Aujourd'hui, les images sont construites et poussées à la main (docker build / push). Cible : aucune action manuelle entre le commit et la production.
+push sur GitHub → CI (build, tests, scan) → image dans Harbor → Kargo détecte la nouvelle version et la promeut (dev → prod) → ArgoCD synchronise le cluster.
+Pareil pour l'infra : Terraform et Ansible lancés par pipeline, avec revue du plan avant application.
+Chaque appli (Signal, Radar, Backstage…) doit suivre ce chemin, et le golden path Backstage doit le générer d'office.
+
+## Composants du cluster (namespaces)
+| Namespace | Rôle |
+|---|---|
+| argocd | Déploiements GitOps |
+| kargo, kargo-* | Promotion des versions entre environnements |
+| harbor | Registre d'images (registry.devops-hme.cloud) |
+| backstage | Portail de l'IDP (catalogue, golden paths, MCP) |
+| vault, external-secrets | Secrets : Vault les stocke, ESO les injecte dans les namespaces |
+| cert-manager | Certificats TLS (wildcard, DNS-01 Cloudflare) |
+| cloudflare | Tunnel Cloudflare (accès depuis Internet) |
+| gateway | Gateway API (Cilium), entrée interne 192.168.1.200 |
+| monitoring | Prometheus, Grafana, Alertmanager, Loki, Alloy, Tempo, node-exporter |
+| local-path-storage | Volumes locaux sur les nœuds |
+| agents | Agents IA du SRE Autonome |
+| signal, radar, veille, demo | Applications |
+| kube-system, cilium-secrets | Système (Cilium, CoreDNS…) |
+
 ## Recettes
 Ajouter un worker :
 1. terraform/vms.tf : ajouter une ligne (vm_id, ip, node, template), puis terraform plan → doit afficher « X to add, 0 to change, 0 to destroy », puis terraform apply.
@@ -80,9 +119,10 @@ Vault :
 - Je tape les commandes moi-même ; les déploiements passent par ArgoCD, les push à la main.
 
 ## Feuille de route
-1. Premier golden path Backstage : créer un service de bout en bout.
-2. Agent IA qui utilise ce golden path via MCP (« crée-moi une API Python avec PostgreSQL »).
-3. SRE Autonome branché sur la plateforme.
+1. Tout en pipeline : CI → Harbor → Kargo → ArgoCD pour chaque appli.
+2. Premier golden path Backstage : créer un service de bout en bout.
+3. Agent IA qui utilise ce golden path via MCP (« crée-moi une API Python avec PostgreSQL »).
+4. SRE Autonome branché sur la plateforme.
 
 ## À faire
 - Extinction la nuit (0 h 30) et réveil auto (8 h 30) avec rtcwake : tester d'abord sur pve02.
