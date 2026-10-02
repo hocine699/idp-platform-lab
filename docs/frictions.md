@@ -193,3 +193,159 @@ intervient sur un nœud Kubernetes.
   écrit en clair — acceptable en lab, jamais en entreprise).
 - **Une clé SSH par machine** plutôt qu'une clé copiée partout. Prépare
   l'introduction de Vault et des certificats SSH éphémères.
+
+---
+
+## 8. Template Proxmox local : impossible de cloner vers un autre nœud
+
+**Symptôme**
+Ajout d'un deuxième nœud (pve02). Le template 9000 n'existe que sur pve01 :
+Terraform ne peut pas créer les nouvelles VM sur pve02 à partir de lui.
+
+**Cause**
+Le disque du template est sur `local-lvm`, un stockage propre à pve01.
+Proxmox ne clone vers un autre nœud que si le disque est sur un stockage partagé.
+
+**Correction**
+Un template par nœud : 9000 sur pve01, 9001 sur pve02 (même image, même agent QEMU).
+Dans `vms.tf`, chaque VM porte son nœud et son template :
+
+```hcl
+"k8s-worker-03" = { vm_id = 122, ip = "192.168.1.73", cores = 4, memory = 8192, node = "pve02", template = 9001 }
+```
+
+**Angle pédagogique**
+Montre concrètement la différence entre stockage local et stockage partagé.
+Bonne transition vers Ceph ou NFS dans un chapitre ultérieur.
+
+---
+
+## 9. DNS de secours public : le trafic interne part sur Internet
+
+**Symptôme**
+Un pod reste en `ImagePullBackOff`, uniquement sur un nouveau worker :
+```
+failed size validation: 46790 != 46644: failed precondition
+```
+
+**Cause**
+Les VM avaient deux DNS : AdGuard (192.168.1.253) et 9.9.9.9 en secours.
+Le NAS était éteint au moment de leur création : systemd-resolved a basculé sur 9.9.9.9
+et y est resté. Quad9 ne connaît pas la réécriture interne d'AdGuard : il renvoie l'IP
+publique Cloudflare, le pull passe par le tunnel, et la réponse arrive modifiée.
+
+Diagnostic en comparant un nœud sain et le nœud malade :
+```bash
+getent hosts registry.devops-hme.cloud
+resolvectl status | grep 'Current DNS'
+```
+
+**Correction**
+AdGuard seul : retirer 9.9.9.9 du netplan (`netplan apply`), et dans `vms.tf`
+garder `servers = ["192.168.1.253"]`.
+
+**Angle pédagogique**
+DNS « split-horizon » : un même nom, deux réponses selon le serveur interrogé.
+Méthode de diagnostic à montrer en vidéo : comparer un nœud sain et un nœud malade.
+
+---
+
+## 10. Ajouter des VM fait apparaître des modifications sur les VM existantes
+
+**Symptôme**
+```
+Plan: 2 to add, 3 to change, 0 to destroy.
+```
+Les 3 « change » portent sur `initialization.user_account.keys` des VM existantes.
+
+**Cause**
+La clé SSH lue aujourd'hui (`~/.ssh/id_ed25519.pub`) n'est pas écrite exactement
+comme celle enregistrée à la création des VM.
+
+**Correction**
+Ignorer ce champ après la création :
+
+```hcl
+lifecycle {
+  ignore_changes = [initialization[0].user_account, initialization[0].dns]
+}
+```
+
+Règle : relire le plan, ne jamais appliquer un « change » qu'on ne comprend pas.
+
+**Angle pédagogique**
+Lire un plan Terraform avant d'appliquer. Isoler les lignes modifiées :
+`terraform plan -no-color | grep -E '^\s*# |^\s*~ |^\s*- '`
+
+---
+
+## 11. Copier un fichier vers un NAS Synology : scp échoue
+
+**Symptôme**
+```
+subsystem request failed on channel 0
+scp: Connection closed
+```
+
+**Cause**
+Depuis OpenSSH 9, `scp` utilise SFTP par défaut. Le service SFTP est désactivé sur DSM.
+
+**Correction**
+```bash
+scp -O fichier hocine@192.168.1.253:~/
+# ou, sans scp :
+cat fichier | ssh hocine@192.168.1.253 "cat > ~/fichier"
+```
+
+**Angle pédagogique**
+Petit piège qui fait perdre du temps : savoir qu'un outil familier a changé de protocole.
+
+---
+
+## 12. gpg dans un pipe : impossible de saisir la phrase de passe
+
+**Symptôme**
+```
+gpg: problem with the agent: Inappropriate ioctl for device
+gpg: error creating passphrase: Operation cancelled
+```
+
+**Cause**
+`tar ... | gpg -c` : gpg a besoin du terminal pour demander la phrase de passe,
+et le pipe occupe son entrée.
+
+**Correction**
+Passer par un fichier intermédiaire, puis l'effacer :
+```bash
+tar czf archive.tar.gz dossier
+gpg -c archive.tar.gz
+shred -u archive.tar.gz
+```
+(Autre option : `export GPG_TTY=$(tty)` avant la commande.)
+
+**Angle pédagogique**
+Chapitre « secrets » : chiffrer `vault-init.json` et les exports au lieu de les laisser en clair.
+
+---
+
+## 13. Cluster Proxmox à 2 nœuds : arbitre QDevice sur un NAS Synology
+
+**Symptôme**
+Avec 2 nœuds, si l'un s'éteint, l'autre perd le quorum : plus possible de démarrer
+une VM ni de modifier la configuration. Et DSM ne permet pas d'installer `corosync-qnetd`.
+
+**Cause**
+Corosync exige la majorité des votes : 1 sur 2 ne suffit pas.
+
+**Correction**
+Un conteneur Debian sur le NAS avec `corosync-qnetd`, et un SSH temporaire
+sur le port 2222 (nécessaire une seule fois pour l'échange de certificats) :
+1. `docker run ... -p 5403:5403 -p 2222:22 -v qnetd-etc:/etc/corosync ...`
+2. Sur pve01, `~/.ssh/config` : `Host 192.168.1.253` → `Port 2222`
+3. `apt install corosync-qdevice` sur les deux nœuds, puis `pvecm qdevice setup 192.168.1.253`
+4. Recréer le conteneur sans le port 2222 (les certificats restent dans le volume).
+
+Résultat : `Total votes: 3`, `Flags: Quorate Qdevice`.
+
+**Angle pédagogique**
+Expliquer le quorum avec des votes. Montrer un nœud qui tombe sans bloquer l'autre.
