@@ -1,0 +1,29 @@
+# Identifiants Argo CD pour TOUS les dépôts de hocine699.
+# "repo-creds" = modèle : s'applique à toute URL qui commence par l'adresse ci-dessous.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: repo-creds-github-hocine699
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: repo-creds-github-hocine699
+    creationPolicy: Owner
+    template:
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: repo-creds
+      data:
+        type: git
+        url: https://github.com/hocine699
+        username: "{{ .username }}"
+        password: "{{ .token }}"
+  data:
+    - secretKey: username
+      remoteRef: { key: github/argocd, property: username }
+    - secretKey: token
+      remoteRef: { key: github/argocd, property: token }
