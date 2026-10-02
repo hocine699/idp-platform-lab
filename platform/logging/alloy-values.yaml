@@ -1,6 +1,6 @@
-# Réglages Helm d'Alloy (chart grafana/alloy) : collecte des logs des pods.
-# Un seul pod qui lit les logs via l'API Kubernetes (pas de DaemonSet :
-# plus simple et plus léger pour un lab de 3 nœuds).
+# Réglages Helm d'Alloy (chart grafana/alloy).
+# Tournée 1 : logs des pods -> Loki.
+# Tournée 2 : OpenTelemetry (traces) -> Tempo.
 controller:
   type: deployment
   replicas: 1
@@ -11,8 +11,19 @@ alloy:
       memory: 64Mi
     limits:
       memory: 256Mi
+  # Les portes d'entrée OpenTelemetry du facteur.
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
   configMap:
     content: |-
+      // ===== Tournée 1 : les logs =====
       // 1. Trouver tous les pods du cluster.
       discovery.kubernetes "pods" {
         role = "pod"
@@ -50,5 +61,36 @@ alloy:
       loki.write "default" {
         endpoint {
           url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }
+
+      // ===== Tournée 2 : OpenTelemetry =====
+      // 5. Recevoir les colis OpenTelemetry (ports 4317 et 4318).
+      otelcol.receiver.otlp "default" {
+        grpc {
+          endpoint = "0.0.0.0:4317"
+        }
+        http {
+          endpoint = "0.0.0.0:4318"
+        }
+        output {
+          traces = [otelcol.processor.batch.default.input]
+        }
+      }
+
+      // 6. Les regrouper par paquets (moins d'allers-retours).
+      otelcol.processor.batch "default" {
+        output {
+          traces = [otelcol.exporter.otlp.tempo.input]
+        }
+      }
+
+      // 7. Livrer les traces à Tempo.
+      otelcol.exporter.otlp "tempo" {
+        client {
+          endpoint = "tempo.monitoring.svc.cluster.local:4317"
+          tls {
+            insecure = true
+          }
         }
       }

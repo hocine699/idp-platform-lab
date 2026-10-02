@@ -1,0 +1,47 @@
+# Métriques Cilium + Hubble pour Prometheus, et tableaux de bord Grafana.
+# Appliqué APRÈS install-monitoring.sh : les ServiceMonitor ont besoin des
+# CRDs de Prometheus Operator, absentes au moment où Ansible installe Cilium.
+
+# Métriques de l'agent Cilium (un par nœud) et de l'opérateur.
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+operator:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  dashboards:
+    enabled: true
+    namespace: monitoring
+
+# Métriques d'Envoy (le moteur du Gateway).
+envoy:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# Métriques Hubble : ce que "voit" le réseau, pod par pod.
+hubble:
+  metrics:
+    enableOpenMetrics: true
+    enabled:
+      - dns                  # requêtes DNS (et leurs échecs)
+      - drop                 # paquets rejetés, avec la raison
+      - tcp                  # connexions TCP (SYN, RST...)
+      - flow                 # volume de trafic
+      - port-distribution    # ports utilisés
+      - icmp
+      - "httpV2:exemplars=true;labelsContext=source_namespace,source_workload,destination_namespace,destination_workload,traffic_direction"
+    serviceMonitor:
+      enabled: true
+    dashboards:
+      enabled: true
+      namespace: monitoring
+
+# Tableau de bord général de Cilium.
+dashboards:
+  enabled: true
+  namespace: monitoring

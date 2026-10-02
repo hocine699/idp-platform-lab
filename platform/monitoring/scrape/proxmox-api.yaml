@@ -1,0 +1,97 @@
+# pve-exporter : traduit l'API Proxmox en métriques Prometheus
+# (état des VM, RAM/CPU par VM, stockage). Compte Proxmox en LECTURE SEULE.
+
+# 1. Le jeton Proxmox, lu dans Vault par ESO.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: pve-exporter
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: pve-exporter
+    creationPolicy: Owner
+  data:
+    - secretKey: PVE_TOKEN_VALUE
+      remoteRef:
+        key: proxmox/exporter
+        property: value
+
+---
+# 2. Le traducteur lui-même.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pve-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pve-exporter
+  template:
+    metadata:
+      labels:
+        app: pve-exporter
+    spec:
+      containers:
+        - name: pve-exporter
+          image: prompve/prometheus-pve-exporter:3.10.0
+          ports:
+            - name: http
+              containerPort: 9221
+          env:
+            - name: PVE_USER
+              value: exporter@pve
+            - name: PVE_TOKEN_NAME
+              value: prometheus
+            - name: PVE_VERIFY_SSL          # certificat auto-signé de Proxmox
+              value: "false"
+          envFrom:
+            - secretRef:
+                name: pve-exporter          # apporte PVE_TOKEN_VALUE
+          resources:
+            requests:
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+
+---
+# 3. Son adresse dans le cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: pve-exporter
+  namespace: monitoring
+spec:
+  selector:
+    app: pve-exporter
+  ports:
+    - name: http
+      port: 9221
+      targetPort: http
+
+---
+# 4. Dire à Prometheus de l'interroger, en visant le Proxmox 192.168.1.50.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: proxmox-api
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  metricsPath: /pve
+  params:
+    target: ["192.168.1.50"]
+    cluster: ["1"]
+    node: ["1"]
+  staticConfigs:
+    - targets:
+        - "pve-exporter.monitoring.svc:9221"
+      labels:
+        role: hyperviseur

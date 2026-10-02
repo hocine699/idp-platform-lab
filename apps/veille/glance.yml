@@ -1,0 +1,130 @@
+# Page de veille de Hocine — configuration de Glance.
+# Pour ajouter une source : une ligne de plus dans la bonne liste,
+# puis relancer ./deploy.sh
+
+theme:
+  background-color: 225 14 15
+  primary-color: 157 47 65
+  contrast-multiplier: 1.1
+
+pages:
+  - name: Veille
+    columns:
+      # ---------- Colonne de gauche : l'essentiel du jour ----------
+      - size: small
+        widgets:
+          - type: weather
+            title: Météo à Lyon
+            location: Lyon, France
+            units: metric
+            hour-format: 24h
+
+          - type: monitor
+            title: Mon lab
+            cache: 1m
+            sites:
+              - title: ArgoCD
+                url: https://argocd.devops-hme.cloud
+                check-url: http://argocd-server.argocd.svc
+              - title: Harbor
+                url: https://registry.devops-hme.cloud
+                check-url: http://harbor.harbor.svc
+              - title: Vault
+                url: https://vault.devops-hme.cloud
+                check-url: http://vault.vault.svc:8200/ui/
+              - title: Backstage
+                url: https://backstage.devops-hme.cloud
+                check-url: http://backstage.backstage.svc
+              - title: Grafana
+                url: https://grafana.devops-hme.cloud
+                check-url: http://monitoring-grafana.monitoring.svc/api/health
+
+      # ---------- Colonne centrale : les articles ----------
+      - size: full
+        widgets:
+          - type: rss
+            title: Actus tech en français
+            style: detailed-list
+            limit: 20
+            collapse-after: 8
+            cache: 2h
+            feeds:
+              - url: https://linuxfr.org/news.atom
+                title: LinuxFr
+              - url: https://next.ink/feed/
+                title: Next
+              - url: https://www.lemondeinformatique.fr/flux-rss/thematique/toutes-les-actualites/rss.xml
+                title: Le Monde Informatique
+              - url: https://www.blogdumoderateur.com/feed/
+                title: Blog du Modérateur
+              - url: https://www.journalduhacker.net/rss
+                title: Journal du hacker
+              - url: https://korben.info/feed
+                title: Korben
+
+          - type: rss
+            title: DevOps et Kubernetes (en anglais)
+            style: detailed-list
+            limit: 15
+            collapse-after: 5
+            cache: 3h
+            feeds:
+              - url: https://kubernetes.io/feed.xml
+                title: Kubernetes
+              - url: https://www.cncf.io/feed/
+                title: CNCF
+              - url: https://thenewstack.io/feed/
+                title: The New Stack
+              - url: https://grafana.com/blog/index.xml
+                title: Grafana
+              - url: https://github.blog/feed/
+                title: GitHub
+
+          - type: rss
+            title: IA et agents (en anglais)
+            style: detailed-list
+            limit: 15
+            collapse-after: 5
+            cache: 3h
+            feeds:
+              - url: https://simonwillison.net/atom/everything/
+                title: Simon Willison
+              - url: https://huggingface.co/blog/feed.xml
+                title: Hugging Face
+
+      # ---------- Colonne de droite : versions et communautés ----------
+      - size: small
+        widgets:
+          - type: releases
+            title: Nouvelles versions de ma stack
+            cache: 6h
+            show-source-icon: true
+            repositories:
+              - kubernetes/kubernetes
+              - cilium/cilium
+              - argoproj/argo-cd
+              - akuity/kargo
+              - goharbor/harbor
+              - hashicorp/vault
+              - external-secrets/external-secrets
+              - cert-manager/cert-manager
+              - backstage/backstage
+              - prometheus/prometheus
+              - grafana/grafana
+              - grafana/loki
+
+          - type: group
+            title: Communautés
+            widgets:
+              - type: hacker-news
+                title: Hacker News
+                limit: 15
+                collapse-after: 5
+              - type: reddit
+                title: r/kubernetes
+                subreddit: kubernetes
+                collapse-after: 5
+              - type: reddit
+                title: r/devops
+                subreddit: devops
+                collapse-after: 5
