@@ -38,7 +38,7 @@ resource "proxmox_virtual_environment_vm" "k8s" {
     }
 
     dns {
-      servers = ["192.168.1.253", "9.9.9.9"]
+      servers = ["192.168.1.253"]
     }
 
     user_account {
@@ -48,7 +48,7 @@ resource "proxmox_virtual_environment_vm" "k8s" {
   }
 
   lifecycle {
-    ignore_changes = [initialization[0].user_account]
+    ignore_changes = [initialization[0].user_account, initialization[0].dns]
   }
 
   agent {
