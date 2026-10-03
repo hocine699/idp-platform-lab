@@ -1,0 +1,20 @@
+# App of apps : la seule Application créée à la main (kubectl apply, une fois).
+# Elle crée et tient à jour toutes les Applications de platform/argocd/apps/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hocine699/idp-platform-lab.git
+    targetRevision: main
+    path: platform/argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false    # retirer un fichier ne supprime jamais une Application
+      selfHeal: true  # une Application modifiée à la main est remise conforme à Git
