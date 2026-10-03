@@ -74,6 +74,7 @@ Puis : tableaux de bord par couche, et alertes Alertmanager qui alimentent les a
 
 ## Tout en pipeline (objectif)
 Aujourd'hui, les images sont construites et poussées à la main (docker build / push). Cible : aucune action manuelle entre le commit et la production.
+CI retenue : GitHub Actions avec un runner auto-hébergé dans le homelab (il joint Harbor en interne).
 push sur GitHub → CI (build, tests, scan) → image dans Harbor → Kargo détecte la nouvelle version et la promeut (dev → prod) → ArgoCD synchronise le cluster.
 Pareil pour l'infra : Terraform et Ansible lancés par pipeline, avec revue du plan avant application.
 Chaque appli (Signal, Radar, Backstage…) doit suivre ce chemin, et le golden path Backstage doit le générer d'office.
