@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: cert-manager
-  namespace: argocd                # où la FICHE est rangée
+  namespace: argocd
 spec:
   project: default
   sources:
@@ -18,11 +18,8 @@ spec:
       ref: values
   destination:
     server: https://kubernetes.default.svc
-    namespace: cert-manager        # CHANGEMENT 1 : où cert-manager est LIVRÉ
-  # CHANGEMENT 2 (temporaire) : pas de syncPolicy pour l'instant.
-  # ArgoCD calcule le diff mais n'applique rien tant qu'on ne clique pas sur Sync.
-  # Une fois le diff relu, on remettra :
-  #   syncPolicy:
-  #     automated:
-  #       prune: false
-  #       selfHeal: true
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: false     # jamais de suppression automatique (les CRD portent tous les certificats)
+      selfHeal: true   # toute modification à la main est annulée
