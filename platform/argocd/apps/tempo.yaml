@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: tempo
+      targetRevision: 3.1.0
+      helm:
+        releaseName: tempo
+        valueFiles:
+          - $values/platform/tracing/tempo-values.yaml
+    - repoURL: https://github.com/hocine699/idp-platform-lab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  # Pas encore de synchro automatique : on relit d'abord le diff.
