@@ -19,4 +19,9 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
-  # Pas encore de synchro automatique : on relit d'abord le diff.
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
