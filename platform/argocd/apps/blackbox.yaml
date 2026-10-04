@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: blackbox
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: prometheus-blackbox-exporter
+      targetRevision: 11.19.1
+      helm:
+        releaseName: blackbox
+        valueFiles:
+          - $values/platform/monitoring/blackbox-values.yaml
+    - repoURL: https://github.com/hocine699/idp-platform-lab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  # Pas encore de synchro automatique : on relit d'abord le diff.
