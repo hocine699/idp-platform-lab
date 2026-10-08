@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: signal
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hocine699/signal.git
+    targetRevision: main
+    path: deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: signal
+  # Pas encore de synchro automatique : on relit d'abord le diff.
