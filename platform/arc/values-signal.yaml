@@ -1,0 +1,8 @@
+githubConfigUrl: https://github.com/hocine699/signal
+githubConfigSecret: arc-github-app
+runnerScaleSetName: arc-signal
+minRunners: 0
+maxRunners: 2
+controllerServiceAccount:
+  namespace: arc-systems
+  name: arc-gha-rs-controller

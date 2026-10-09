@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arc-runners-signal
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: ghcr.io/actions/actions-runner-controller-charts
+      chart: gha-runner-scale-set
+      targetRevision: 0.15.0
+      helm:
+        releaseName: arc-signal
+        valueFiles:
+          - $values/platform/arc/values-signal.yaml
+    - repoURL: https://github.com/hocine699/idp-platform-lab.git
+      targetRevision: main
+      path: platform/arc/signal
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: arc-runners
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
