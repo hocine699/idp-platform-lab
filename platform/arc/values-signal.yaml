@@ -6,3 +6,20 @@ maxRunners: 2
 controllerServiceAccount:
   namespace: arc-systems
   name: arc-gha-rs-controller
+template:
+  spec:
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:2.338.2
+        command: ["/home/runner/run.sh"]
+        volumeMounts:
+          - name: docker-config
+            mountPath: /home/runner/.docker
+            readOnly: true
+    volumes:
+      - name: docker-config
+        secret:
+          secretName: harbor-robot-signal
+          items:
+            - key: .dockerconfigjson
+              path: config.json
