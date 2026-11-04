@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: buildkitd
+  labels: { app: buildkitd }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: buildkitd }
+  template:
+    metadata:
+      labels: { app: buildkitd }
+    spec:
+      containers:
+        - name: buildkitd
+          image: moby/buildkit:v0.34.0-rootless
+          args:
+            - --addr
+            - unix:///run/user/1000/buildkit/buildkitd.sock
+            - --addr
+            - tcp://0.0.0.0:1234
+            - --oci-worker-no-process-sandbox
+          ports:
+            - containerPort: 1234
+          readinessProbe:
+            exec: { command: [buildctl, debug, workers] }
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile: { type: Unconfined }
+            appArmorProfile: { type: Unconfined }
+          volumeMounts:
+            - name: cache
+              mountPath: /home/user/.local/share/buildkit
+      volumes:
+        - name: cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: buildkitd
+spec:
+  selector: { app: buildkitd }
+  ports:
+    - port: 1234
+      targetPort: 1234
